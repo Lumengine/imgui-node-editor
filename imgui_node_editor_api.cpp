@@ -760,3 +760,50 @@ int ax::NodeEditor::GetOrderedNodeIds(NodeId* nodes, int size)
 {
     return s_Editor->GetNodeIds(nodes, size);
 }
+
+#ifdef IMGUI_BUNDLE_PYTHON_API
+
+constexpr int MAX_IDS = 1000;
+
+std::vector<ax::NodeEditor::NodeId> ax::NodeEditor::GetSelectedNodes()
+{
+    ax::NodeEditor::NodeId ids[MAX_IDS];
+    int count = GetSelectedNodes(ids, MAX_IDS);
+    std::vector<ax::NodeEditor::NodeId> result;
+    result.insert(result.end(), ids, ids + count);
+    return result;
+}
+std::vector<ax::NodeEditor::LinkId> ax::NodeEditor::GetSelectedLinks()
+{
+    ax::NodeEditor::LinkId ids[MAX_IDS];
+    int count = GetSelectedLinks(ids, MAX_IDS);
+    std::vector<ax::NodeEditor::LinkId> result;
+    result.insert(result.end(), ids, ids + count);
+    return result;
+}
+std::vector<ax::NodeEditor::NodeId> ax::NodeEditor::GetActionContextNodes()
+{
+    ax::NodeEditor::NodeId ids[MAX_IDS];
+    int count = GetActionContextNodes(ids, MAX_IDS);
+    std::vector<ax::NodeEditor::NodeId> result;
+    result.insert(result.end(), ids, ids + count);
+    return result;
+}
+std::vector<ax::NodeEditor::LinkId> ax::NodeEditor::GetActionContextLinks()
+{
+    ax::NodeEditor::LinkId ids[MAX_IDS];
+    int count = GetActionContextLinks(ids, MAX_IDS);
+    std::vector<ax::NodeEditor::LinkId> result;
+    result.insert(result.end(), ids, ids + count);
+    return result;
+}
+std::vector<ax::NodeEditor::NodeId> ax::NodeEditor::GetOrderedNodeIds()
+{
+    ax::NodeEditor::NodeId ids[MAX_IDS];
+    int count = GetOrderedNodeIds(ids, MAX_IDS);
+    std::vector<ax::NodeEditor::NodeId> result;
+    result.insert(result.end(), ids, ids + count);
+    return result;
+}
+
+#endif

@@ -13,6 +13,16 @@
 # define __IMGUI_NODE_EDITOR_H__
 # pragma once
 
+//
+// Adaptations for ImGui Bundle are noted with [ADAPT_IMGUI_BUNDLE]
+//
+// [ADAPT_IMGUI_BUNDLE]
+#ifdef IMGUI_BUNDLE_PYTHON_API
+#include <vector>
+#endif
+// IMGUI_BUNDLE_PYTHON_UNSUPPORTED_API is always defined (even when building python bindings),
+// but is used as a marker to exclude certain functions from the python binding code.
+#define IMGUI_BUNDLE_PYTHON_UNSUPPORTED_API
 
 //------------------------------------------------------------------------------
 # include <imgui.h>
@@ -381,8 +391,14 @@ IMGUI_NODE_EDITOR_API bool IsActive();
 
 IMGUI_NODE_EDITOR_API bool HasSelectionChanged();
 IMGUI_NODE_EDITOR_API int  GetSelectedObjectCount();
+#ifdef IMGUI_BUNDLE_PYTHON_UNSUPPORTED_API
 IMGUI_NODE_EDITOR_API int  GetSelectedNodes(NodeId* nodes, int size);
 IMGUI_NODE_EDITOR_API int  GetSelectedLinks(LinkId* links, int size);
+#endif
+#ifdef IMGUI_BUNDLE_PYTHON_API
+IMGUI_NODE_EDITOR_API std::vector<NodeId> GetSelectedNodes();
+IMGUI_NODE_EDITOR_API std::vector<LinkId> GetSelectedLinks();
+#endif
 IMGUI_NODE_EDITOR_API bool IsNodeSelected(NodeId nodeId);
 IMGUI_NODE_EDITOR_API bool IsLinkSelected(LinkId linkId);
 IMGUI_NODE_EDITOR_API void ClearSelection();
@@ -435,8 +451,14 @@ IMGUI_NODE_EDITOR_API bool AcceptPaste();
 IMGUI_NODE_EDITOR_API bool AcceptDuplicate();
 IMGUI_NODE_EDITOR_API bool AcceptCreateNode();
 IMGUI_NODE_EDITOR_API int  GetActionContextSize();
+#ifdef IMGUI_BUNDLE_PYTHON_UNSUPPORTED_API
 IMGUI_NODE_EDITOR_API int  GetActionContextNodes(NodeId* nodes, int size);
 IMGUI_NODE_EDITOR_API int  GetActionContextLinks(LinkId* links, int size);
+#endif
+#ifdef IMGUI_BUNDLE_PYTHON_API
+IMGUI_NODE_EDITOR_API std::vector<NodeId> GetActionContextNodes();
+IMGUI_NODE_EDITOR_API std::vector<LinkId> GetActionContextLinks();
+#endif
 IMGUI_NODE_EDITOR_API void EndShortcut();
 
 IMGUI_NODE_EDITOR_API float GetCurrentZoom();
@@ -461,8 +483,13 @@ IMGUI_NODE_EDITOR_API ImVec2 ScreenToCanvas(const ImVec2& pos);
 IMGUI_NODE_EDITOR_API ImVec2 CanvasToScreen(const ImVec2& pos);
 
 IMGUI_NODE_EDITOR_API int GetNodeCount();                                // Returns number of submitted nodes since Begin() call
+#ifdef IMGUI_BUNDLE_PYTHON_UNSUPPORTED_API
 IMGUI_NODE_EDITOR_API int GetOrderedNodeIds(NodeId* nodes, int size);    // Fills an array with node id's in order they're drawn; up to 'size` elements are set. Returns actual size of filled id's.
-
+#endif
+#ifdef IMGUI_BUNDLE_PYTHON_API
+// Fills an array with node id's in order they're drawn
+IMGUI_NODE_EDITOR_API std::vector<NodeId> GetOrderedNodeIds();
+#endif
 
 
 
