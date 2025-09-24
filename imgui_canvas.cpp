@@ -348,7 +348,9 @@ void ImGuiEx::Canvas::Suspend()
     IM_ASSERT(m_DrawList->_Splitter._Current == m_ExpectedChannel);
 
     if (m_SuspendCounter == 0)
+    {
         LeaveLocalSpace();
+    }
 
     ++m_SuspendCounter;
 }
@@ -503,10 +505,18 @@ void ImGuiEx::Canvas::EnterLocalSpace()
     //     different clip rectangle.
     //
     //     More investigation is needed. To get to the bottom of this.
-    if ((!m_DrawList->CmdBuffer.empty() && m_DrawList->CmdBuffer.back().ElemCount > 0) || m_DrawList->_Splitter._Count > 1)
-        m_DrawList->AddCallback(ImDrawCallback_ImCanvas, nullptr);
+    // if ((!m_DrawList->CmdBuffer.empty() && m_DrawList->CmdBuffer.back().ElemCount > 0) || m_DrawList->_Splitter._Count > 1)
+    //     m_DrawList->AddCallback(ImDrawCallback_ImCanvas, nullptr);
+    // m_DrawListFirstCommandIndex = ImMax(m_DrawList->CmdBuffer.Size - 1, 0);
 
+    // # Proposed fix (for the above FIXME):
+    // Always insert sentinel + fresh command to isolate canvas contents.
+    // This avoids clip rect leakage and ensures balanced cleanup in LeaveLocalSpace().
+    // The old conditional approach could emit 0 or 2 sentinels depending on splitter state,
+    // leading to inconsistent behavior.
+    m_DrawList->AddCallback(ImDrawCallback_ImCanvas, nullptr);
     m_DrawListFirstCommandIndex = ImMax(m_DrawList->CmdBuffer.Size - 1, 0);
+    m_DrawList->AddDrawCmd();
 
 # if defined(IMGUI_HAS_VIEWPORT)
     auto window = ImGui::GetCurrentWindow();
@@ -613,56 +623,15 @@ void ImGuiEx::Canvas::LeaveLocalSpace()
         }
     }
 
-    // Remove sentinel draw command if present
-    if (m_DrawListCommadBufferSize > 0)
+    // Remove all ImCanvas sentinels.
+    // Normally 1 sentinel per EnterLocalSpace, but can be more if user called Suspend()/Resume()
+    // (which may be called automatically when opening windows, popups, etc).
+    for (auto it = m_DrawList->CmdBuffer.begin(); it != m_DrawList->CmdBuffer.end(); )
     {
-        /*
-        Analysis of the bug https://github.com/thedmd/imgui-node-editor/issues/282
-        when using this repro: https://github.com/pthom/node_window_clipping_issue/tree/suspend_resume_issue2
-
-        At the 4th call of LeaveLocalSpace(), we have:
-
-            this = {ImGuiEx::Canvas *}
-                 m_DrawList = {ImDrawList *}                      mDrawList is of size 4
-                     CmdBuffer = {ImVector<ImDrawCmd>}            its elements at index 2
-                         Size = {int} 4                           has UserCallback == {ImDrawCallback_ImCanvas}
-                         Capacity = {int} 8
-                         Data = {ImDrawCmd *}
-                 m_ExpectedChannel = {int} 0
-                 m_DrawListFirstCommandIndex = {int} 2
-                 m_DrawListCommadBufferSize = {int} 1
-                 m_DrawListStartVertexIndex = {int} 8
-
-         We have m_DrawListFirstCommandIndex = 2, however, the tests in the original code will test only at index 0 and 1!
-                if (m_DrawList->CmdBuffer.size() > m_DrawListCommadBufferSize && m_DrawList->CmdBuffer[m_DrawListCommadBufferSize].UserCallback == ImDrawCallback_ImCanvas)
-                    m_DrawList->CmdBuffer.erase(m_DrawList->CmdBuffer.Data + m_DrawListCommadBufferSize);
-                else if (m_DrawList->CmdBuffer.size() >= m_DrawListCommadBufferSize && m_DrawList->CmdBuffer[m_DrawListCommadBufferSize - 1].UserCallback == ImDrawCallback_ImCanvas)
-                    m_DrawList->CmdBuffer.erase(m_DrawList->CmdBuffer.Data + m_DrawListCommadBufferSize - 1);
-
-
-        */
-
-        // Original tests; this test will fail because it tests at index 0 and 1
-        if (m_DrawList->CmdBuffer.size() > m_DrawListCommadBufferSize && m_DrawList->CmdBuffer[m_DrawListCommadBufferSize].UserCallback == ImDrawCallback_ImCanvas)
-            m_DrawList->CmdBuffer.erase(m_DrawList->CmdBuffer.Data + m_DrawListCommadBufferSize);
-        else if (m_DrawList->CmdBuffer.size() >= m_DrawListCommadBufferSize && m_DrawList->CmdBuffer[m_DrawListCommadBufferSize - 1].UserCallback == ImDrawCallback_ImCanvas)
-            m_DrawList->CmdBuffer.erase(m_DrawList->CmdBuffer.Data + m_DrawListCommadBufferSize - 1);
-
-        // Proposed solution: test all commands from index >= m_DrawListFirstCommandIndex
-        // and remove the one with UserCallback == ImDrawCallback_ImCanvas
-        // (based on the original code, it seems there can be only one)
-        int idxCommand_ImDrawCallback_ImCanvas = -1;
-        for (int i = m_DrawListFirstCommandIndex; i < m_DrawList->CmdBuffer.size(); ++i)
-        {
-            auto & command = m_DrawList->CmdBuffer[i];
-            if (command.UserCallback == ImDrawCallback_ImCanvas)
-            {
-                idxCommand_ImDrawCallback_ImCanvas = i;
-                break;
-            }
-        }
-        if (idxCommand_ImDrawCallback_ImCanvas >= 0)
-            m_DrawList->CmdBuffer.erase(m_DrawList->CmdBuffer.Data + idxCommand_ImDrawCallback_ImCanvas);
+        if (it->UserCallback == ImDrawCallback_ImCanvas)
+            it = m_DrawList->CmdBuffer.erase(it);
+        else
+            ++it;
     }
 
     auto& fringeScale = ImFringeScaleRef(m_DrawList);
